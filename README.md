@@ -38,7 +38,7 @@ In the near(?) future, I will add functions to compute torsion classes, tilting 
 ## Requirements
 
 - exe file: Windows
-- Python source codes: Python 3.7 or later.
+- Python source codes: Python 3.7 or later and [PySimpleGUI](https://pysimplegui.readthedocs.io/en/latest/)
 
 ## Author
 
