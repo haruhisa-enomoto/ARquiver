@@ -5,7 +5,7 @@ A GUI program to work with Auslander-Reiten quivers and compute various objects.
 
 (The Auslander-Reiten quiver of mod kQ for a quiver Q of type D5)
 
-[exe file (9.7 MB) for Windows](https://haruhisa-enomoto.github.io/files/AR_quiver_calculator.exe) available.
+[exe file (9.7 MB) for Windows](https://github.com/haruhisa-enomoto/ARquiver/releases/download/v0.1.0/AR_quiver_calculator.exe) available.
 
 ## Contents
 
