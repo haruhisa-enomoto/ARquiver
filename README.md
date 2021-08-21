@@ -42,7 +42,7 @@ In the near(?) future, I will add functions to compute torsion classes, tilting 
 
 ## Author
 
-[Haruhisa Enomoto](http://haruhisa-enomoto.github.io/), a postdoc at Osaka Prefecture University in Japan.
+[Haruhisa Enomoto](http://haruhisa-enomoto.github.io/), a postdoc, e-mail: the35883 [at] osakafu-u.ac.jp
 
 ## Changelog
 - ver 0.1.0 - 2021-08-21: Initial version.
