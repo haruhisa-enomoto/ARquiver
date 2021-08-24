@@ -32,6 +32,9 @@ If your category is a triangulated category, then this can
 
 (See "Help -> Assumptions" of the calculator for details on supported categories.)
 
+In the near(?) future, I will add functions to compute torsion classes, (tau)-tilting modules, wide subcategories, projective covers, cluster-tilting, and so on.
+
+**If you want some functions, then please contact me!**
 
 ### Example
 
@@ -47,8 +50,6 @@ If your category is a triangulated category, then this can
 
 ![Ortho](https://media.discordapp.net/attachments/524877289213788171/879642680630595594/unknown.png?width=941&height=630)
 
-
-In the near(?) future, I will add functions to compute torsion classes, tilting modules, wide subcategories, projective covers, and so on.
 
 ## Requirements
 
