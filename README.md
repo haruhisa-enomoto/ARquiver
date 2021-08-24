@@ -63,8 +63,8 @@ In the near(?) future, I will add functions to compute torsion classes, (tau)-ti
 ## Changelog
 
 - ver 0.2.0 - 2021-08-24:
-  - Improve graphics and layouts
-  - Improve open, save and import functions.
+  - Improve graphics and layouts.
+  - Improve open, save and import functions. Import from String Applet now preserves locations of vertices.
   - Add calculations on triangulated categories (shift, maximal Ext-orthogonals)
 
 - ver 0.1.0 - 2021-08-21: Initial version.
