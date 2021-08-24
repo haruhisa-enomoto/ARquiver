@@ -1,16 +1,17 @@
 # AR quiver calculator
 A GUI program to work with Auslander-Reiten quivers and compute various objects.
 
-![image](https://media.discordapp.net/attachments/524877289213788171/878482371068981299/unknown.png?width=975&height=631)
+![image](https://media.discordapp.net/attachments/524877289213788171/879642217411657738/unknown.png?width=890&height=630)
 
-(The Auslander-Reiten quiver of mod kQ for a quiver Q of type D5)
+(The Auslander-Reiten quiver of the cluster category of type A3)
 
-[exe file (9.7 MB) for Windows](https://github.com/haruhisa-enomoto/ARquiver/releases/download/v0.1.0/AR_quiver_calculator.exe) available.
+[exe file (9.7 MB) for Windows](https://github.com/haruhisa-enomoto/ARquiver/releases/download/v0.2.0/ARquiver_calculator.exe) available.
 
 ## Contents
 
 - [ARquiver.py](ARquiver.py): A module which does actual computation.
-- [AR_quiver_calculator.py](AR_quiver_calculator.py): A GUI interface for [ARquiver.py](ARquiver.py).
+- [ARquiver_calculator.py](ARquiver_calculator.py): A GUI interface for [ARquiver.py](ARquiver.py).
+- [examples](/examples/): A folder which contains some AR quivers (mod kQ and cluster categories of some Dynkin types)
 
 ## What can this do?
 You can
@@ -20,17 +21,31 @@ You can
 
 As for computations, so far, this can
 
-- compute dim_k Hom(X,Y) for two indecomposables X and Y
-- compute composition series of Hom functors
+- Compute dim_k Hom(X,Y) for two indecomposables X and Y.
+- Compute composition series of Hom functors.
 
-if your AR quiver is the AR quiver of some nice class of categories,
-for example mod A for a finite-dimensional algebra A, or a Hom-finite triangulated category.
-(See "Assumption" tab of the calculator for details.)
+If your category is a triangulated category, then this can
+
+- Compute shift functors, Serre functors
+- List all objects which are self Ext^n-orthogonal for designated values n.
+(e.g. list all maximal Ext^1-orthogonal = cluster tilting objects in 2-CY triangulated category)
+
+(See "Help -> Assumptions" of the calculator for details on supported categories.)
 
 
 ### Example
-![Hom](https://media.discordapp.net/attachments/524877289213788171/878488400628432937/unknown.png)
-The calculation of Hom(8,13) and Hom(-,13) and Hom(8,-) in the above D5 example.
+
+- The calculation of Hom.
+
+![Hom](https://media.discordapp.net/attachments/524877289213788171/879642561017425960/unknown.png)
+
+- The calculation of shift functors.
+
+![Shift](https://media.discordapp.net/attachments/524877289213788171/879642504033599528/unknown.png)
+
+- The calculation of all maximal Ext-orthogonal objects.
+
+![Ortho](https://media.discordapp.net/attachments/524877289213788171/879642680630595594/unknown.png?width=941&height=630)
 
 
 In the near(?) future, I will add functions to compute torsion classes, tilting modules, wide subcategories, projective covers, and so on.
@@ -45,4 +60,9 @@ In the near(?) future, I will add functions to compute torsion classes, tilting 
 [Haruhisa Enomoto](http://haruhisa-enomoto.github.io/), a postdoc, e-mail: the35883 [at] osakafu-u.ac.jp
 
 ## Changelog
+
+- ver 0.2.0 - 2021-08-24:
+  - Improve graphics and layouts
+  - Add calculations on triangulated categories (shift, maximal Ext-orthogonals)
+
 - ver 0.1.0 - 2021-08-21: Initial version.
