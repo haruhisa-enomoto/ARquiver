@@ -28,7 +28,7 @@ If your category is a triangulated category, then this can
 
 - Compute shift functors, Serre functors
 - List all objects which are self Ext^n-orthogonal for designated values n.
-(e.g. list all maximal Ext^1-orthogonal = cluster tilting objects in 2-CY triangulated category)
+(e.g. list all maximal Ext^1-orthogonal = cluster tilting objects if your category is 2-CY)
 
 (See "Help -> Assumptions" of the calculator for details on supported categories.)
 
