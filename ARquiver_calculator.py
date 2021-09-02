@@ -146,7 +146,7 @@ Under the condition 1, here are some examples of tau-categories.
 """
 
 info_text = """
-AR quiver calculator ver 0.2.0.
+AR quiver calculator ver 0.2.1.
 
 This program is written in Python, and uses PySimpleGUI.
 Actually, the actual computation algorithm is written in another module
@@ -375,7 +375,7 @@ layout = [[sg.Menu(menu_def)],
                          ]],
                        expand_x=True, expand_y=True)]]
 
-window_title = "AR quiver calculator ver. 0.2.0"
+window_title = "AR quiver calculator ver. 0.2.1"
 window = sg.Window(window_title, layout,
                    resizable=True, finalize=True,
                    enable_close_attempted_event=True)
