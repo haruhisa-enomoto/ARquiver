@@ -62,6 +62,9 @@ In the near(?) future, I will add functions to compute torsion classes, (tau)-ti
 
 ## Changelog
 
+- ver 0.2.1 - 2021-09-02:
+  - Correct some typos and add Mac app file.
+
 - ver 0.2.0 - 2021-08-24:
   - Improve graphics and layouts.
   - Improve open, save and import functions. Import from String Applet now preserves locations of vertices.
