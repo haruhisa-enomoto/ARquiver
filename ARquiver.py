@@ -7,12 +7,6 @@ to compute various things.
 We often identify a translation quiver and a certain kind of additive category,
 see the docstring of `TranslationQuiver`.
 
-So far, the computation of the dimension of Hom(X,Y)
-and the composition series of Hom functors are implemented.
-
-In the near(?) future, the various methods will be available.
-
-
 References:
     [Iy1] O. Iyama, tau-categories I: Ladders,
         Algebr. Represent. Theory 8 (2005), no. 3, 297–321.
@@ -212,7 +206,7 @@ class TranslationQuiver():
                  arrows: tuple[tuple[Q, Q], ...],
                  tau: dict[Q, Q],
                  is_tau_category: bool = True) -> None:
-        """Construct
+        """Initialize a translation quiver by inputs.
 
         Args:
             vertices: The tuple of vertices.
