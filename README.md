@@ -5,7 +5,7 @@ A GUI program to work with Auslander-Reiten quivers and compute various objects.
 
 (The Auslander-Reiten quiver of the cluster category of type A3)
 
-- [exe file (9.7 MB) for Windows](https://github.com/haruhisa-enomoto/ARquiver/releases/download/v0.2.0/ARquiver_calculator.exe) available.
+- [exe file (9.7 MB) for Windows](https://github.com/haruhisa-enomoto/ARquiver/releases/download/v0.2.1/ARquiver_calculator.exe) available.
 - [app file for Mac](https://github.com/haruhisa-enomoto/ARquiver/releases/download/v0.2.1/ARquiver_calculator.app.zip) available.
 
 ## Contents
