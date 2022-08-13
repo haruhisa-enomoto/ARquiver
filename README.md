@@ -55,6 +55,8 @@ Also, for a selected subcategory C, this computes all the Ext-projective (inject
 
 **If you want some functions, then please contact me!**
 
+**Any help is welcome!**
+
 
 ## Requirements
 
@@ -65,6 +67,16 @@ Also, for a selected subcategory C, this computes all the Ext-projective (inject
 ## Author
 
 [Haruhisa Enomoto](http://haruhisa-enomoto.github.io/), a postdoc, e-mail: henomoto [at] omu.ac.jp
+
+## Future work(?)
+
+The following is possible in principle, and I'll add them later(?). 
+
+- Exhibit tau-tilting theory (show bijections between tau-tilting, torsion class, wide subcat, semibrick, etc, and tau-tilting mutation, c-vectors, g-vectors, ...)
+- Compute syzygy and projective dimension of a module, and the global dimendion of an algebra
+- Compute all tilting modules
+- Compute all sub-quotient-closed subcategories (this corresponds to two-sided ideals)
+- Check whether inputted AR quiver is actually the AR quiver of the module category
 
 ## Changelog
 
