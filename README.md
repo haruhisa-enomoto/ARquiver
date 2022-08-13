@@ -25,7 +25,7 @@ Input AR quiver of your module category or triangulated category as follows:
 
 Basic Input          |  Import from String Applet (Double Triangle)
 :-------------------------:|:-------------------------:
-![](https://cdn.discordapp.com/attachments/524877289213788171/1007893449502113852/unknown.png)  |  ![](https://cdn.discordapp.com/attachments/524877289213788171/1007895483554992138/unknown.png)
+![](https://cdn.discordapp.com/attachments/524877289213788171/1007893449502113852/unknown.png)  |  ![](https://cdn.discordapp.com/attachments/524877289213788171/1007907225068638268/unknown.png)
 
 ### 2. Compute Hom and Ext^1
 
