@@ -295,7 +295,7 @@ For the definitions of the classes of subcategories, see [Help] - [Classes of su
 
 # -----GUI Layout START-----
 
-sg.theme('DarkBrown')
+sg.theme('DarkGrey2')
 
 vtx_col = [
     [sg.T('Vertices:')],
