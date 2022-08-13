@@ -211,7 +211,7 @@ Author: Haruhisa Enomoto
 """
 
 ref_text = """
-[AP] S.Asai, C. Pfeifer, Wide subcategories and lattices of torsion classes,
+[AP] S. Asai, C. Pfeifer, Wide subcategories and lattices of torsion classes,
     arXiv:1905.01148.
 
 [En] H. Enomoto, From the lattice of torsion classes to the posets
@@ -268,10 +268,10 @@ We can calculate the following classes of subcategories of the module category:
 
 - Torsion(-free) classes: subcategories closed under extensions and quotients (resp. submodules).
 - Wide subcategories: subcategories closed under extensions, kernels, and cokernels.
-- semibricks: pair-wise Hom-orthogonal brick (brick: module with End = k
+- Semibricks: pair-wise Hom-orthogonal brick (brick: module with End = k
 - ICE-closed subcategories: closed under Images, Cokernels, and Extensions.
 - IKE-closed subcategories: closed under Images, Kernels, and Extensions.
-- torsion hearts: T \cap U^\perp for some torsion classes U and T with U \subseteq T.
+- Torsion hearts: T \cap U^\perp for some torsion classes U and T with U \subseteq T.
 - IE-closed subcategories: closed under Images and Extensions.
 """
 
