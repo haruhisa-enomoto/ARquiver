@@ -4,10 +4,9 @@ This uses PySimpleGUI for GUI implementation.
 The purpose of this program is to input AR quiver in several ways,
 and calculate various objects from it.
 
-Actual computation is achieved by `ARquiver.py`
-and its class `TranslationQuiver`,
-hence the main aim of this program is
-to provide a GUI interface for `ARquiver.py`.
+Actual computation is achieved by `ARquiver.py`and its class
+`TranslationQuiver`, hence the main aim of this program is to provide
+a GUIinterface for `ARquiver.py`.
 
 GitHub Repository:
 https://github.com/haruhisa-enomoto/ARquiver
@@ -21,68 +20,134 @@ import PySimpleGUI as sg
 
 from ARquiver import TranslationQuiver
 
+version = "0.3.0"
+# Colors for vertices
+usual_color, border_color, select_color = "gray90", "gray20", "lightsalmon"
+cat_color1, cat_color2 = "CadetBlue1", "light pink"
 
-# ----- Define classes `Vertex` and `Arrow` -----
+
+# ----- Global variables -----
+
+vertices: list[Vertex] = []
+arrows: list[Arrow] = []  # contains both usual arrows and tau arrows.
+quiver = None  # `TranslationQuiver` object.
+
+file_path = None
+changed: bool = False
+
+# ----- Classes `Vertex` and `Arrow` -----
+
+
 class Vertex:
+    """A class for vertices.
+
+    Attributes:
+        `name` (str): name
+        `location`: coordinate in our main graph
+        `circle_id` (dict[str, int]): dictionary of ids of circle objects
+            in our graphs.
+        `label_id` (dict[str, int]): dictionary of ids of label objects
+            in our graphs.
+    """
+
     def __init__(self, name: str, location: tuple[float, float]) -> None:
         self.name = name
         self.location = location
+        self.circle_id: dict[str, int] = {}
+        self.label_id: dict[str, int] = {}
 
-    def draw(self) -> None:
-        """Draw `self` in our graph object.
-        When this is called, two attributes are assigned:
-        `self.circle` (int):
-            the circle drawn in the canvas, represented by an element ID.
-        `self.label` (int):
-            the text label of `self.name` written in the canvas,
-            represented by an element ID.
+    def __str__(self):
+        return self.name
+
+    def __int__(self):  # Used for sorting
+        try:
+            return int(self.name)
+        except ValueError:
+            return 0
+
+    def __lt__(self, other):
+        return int(self) < int(other)
+
+    def __eq__(self, other):
+        if not isinstance(other, Vertex):
+            return NotImplemented
+        return self.name == other.name
+
+    def draw(self, graph_name: str = "main"):
+        """Draw `self` in our graph with name `graph_name`.
         """
-        self.circle = graph.draw_circle(self.location, 30, fill_color="bisque",
-                                        line_color="darkorange",
-                                        line_width=2)
-        self.label = graph.draw_text(self.name, self.location,
-                                     font="Helvetica 15")
+        if not hasattr(self, "circle_id"):  # For backward compatibility
+            self.circle_id = {}
+            self.label_id = {}
+        g = str_to_graph[graph_name]
+        if graph_name in self.circle_id:
+            g.delete_figure(self.circle_id[graph_name])
+            g.delete_figure(self.label_id[graph_name])
+        circ = g.draw_circle(self.location, 15, fill_color=usual_color,
+                             line_color=border_color, line_width=2)
+        label = g.draw_text(self.name, self.location, font="Helvetica 15")
+        self.circle_id[graph_name], self.label_id[graph_name] = circ, label
 
     def update_location(self) -> None:
-        """Update `self.location`.
-        This will be called if the vertex is dragged and moved.
+        """Update `self.location` accorindg to the current location
+        in our main graph.
         """
-        self.location = location_of_fig(self.circle)  # type: ignore
+        self.location = location_of_fig(self.circle_id["main"])
 
-    def delete(self) -> None:
-        """Delete figure from our graph object.
+    def delete(self, graph_name: str = "main") -> None:
+        """Delete figure from our graph object with name `graph_name`.
         NOTE: This doesn't touch the global list `vertices`.
         """
-        graph.delete_figure(self.circle)
-        graph.delete_figure(self.label)
+        graph.delete_figure(self.circle_id[graph_name])
+        graph.delete_figure(self.label_id[graph_name])
 
 
 class Arrow:
-    def __init__(self, source: Vertex, target: Vertex, tau: bool = False):
-        """A class of arrows.
+    """A class for arrows.
+    This both contains usual arrows and AR-translation arrows.
 
-        Args:
-            source (Vertex): arrow's source vertex.
-            target (Vertex): arrow's target vertex.
-            tau (bool, optional): Whether this is a translation arrow.
-                Defaults to False.
-        """
+    Attributes:
+        source (Vertex): arrow's source vertex.
+        target (Vertex): arrow's target vertex.
+        tau (bool, optional): Whether this is a translation arrow.
+            Defaults to False.
+        figure_id (dict[str, int]): dictionary of ids of the arrow
+            in our graphs.
+    """
+
+    def __init__(self, source: Vertex, target: Vertex, tau: bool = False):
         self.source = source
         self.target = target
         self.is_tau = tau
+        self.figure_id: dict[str, int] = {}
 
-    def draw(self) -> None:
-        """Draw `self` in the canvas.
+    def __str__(self):
+        if not self.is_tau:
+            return self.source.name + "---->" + self.target.name
+        else:
+            return self.source.name + "--tau-->" + self.target.name
+
+    def __lt__(self, other):  # For sorting.
+        return (self.source, self.target) < (other.source, other.target)
+
+    def draw(self, graph_name: str = "main") -> None:
+        """Draw `self` in our graph with name `graph_name`.
         """
+        if not hasattr(self, "figure_id"):
+            self.figure_id = {}
+        g = str_to_graph[graph_name]
+        if graph_name in self.figure_id:
+            g.delete_figure(self.figure_id[graph_name])
         if self.is_tau:
-            color, dash = "red", (10, 5)
+            color, dash = "red3", (10, 5)
         else:
             color, dash = "black", None
         if self.source != self.target:
             distance = ((self.source.location[0] - self.target.location[0])**2
-                        + (self.source.location[1] - self.target.location[1])**2
+                        + (self.source.location[1] -
+                           self.target.location[1])**2
                         )**0.5  # distance between source and target
-            ratio = 30/distance
+            ratio = 15/distance
             head_loc = (self.source.location[0] * ratio
                         + self.target.location[0] * (1 - ratio),
                         self.source.location[1] * ratio
@@ -91,37 +156,26 @@ class Arrow:
                         + self.target.location[0] * ratio,
                         self.source.location[1] * (1 - ratio)
                         + self.target.location[1] * ratio)
-            self.figure = graph.draw_line(tail_loc,
-                                          head_loc,
-                                          width=5, color=color)
-            graph.TKCanvas.itemconfig(self.figure,  # type: ignore
-                                      arrow="last",
-                                      arrowshape=(15, 15, 8),
-                                      dash=dash)
+            id = g.draw_line(tail_loc, head_loc, width=3, color=color)
+            g.TKCanvas.itemconfig(id, arrow="last",
+                                  arrowshape=(8, 15, 8), dash=dash)
         else:  # Then this is a loop!
             circle_center = (self.source.location[0],
-                             self.source.location[1] - 50)
-            self.figure = graph.draw_circle(circle_center,
-                                            50,
-                                            line_width=5,
-                                            line_color=color)
-            graph.TKCanvas.itemconfig(self.figure, dash=dash)  # type: ignore
-        graph.send_figure_to_back(self.figure)
+                             self.source.location[1] - 25)
+            id = g.draw_circle(circle_center, 25,
+                               line_width=3, line_color=color)
+            g.TKCanvas.itemconfig(id, dash=dash)
+        g.send_figure_to_back(id)
+        self.figure_id[graph_name] = id
 
-    def delete(self) -> None:
-        """Delete figure from our graph object.
+    def delete(self, graph_name: str = "main") -> None:
+        """Delete figure from our graph object with name `graph_name`.
         NOTE: This doesn't touch the global list `arrows`.
         """
-        graph.delete_figure(self.figure)
-        # graph.delete_figure(self.fig_tip)
-
-
-# ----- Global lists -----
-
-vertices: list[Vertex] = []
-arrows: list[Arrow] = []  # `arrows` contains both usual arrows and tau arrows.
+        graph.delete_figure(self.figure_id[graph_name])
 
 # ----- Long texts needed in layouts in windows -----
+
 
 assump_text = """
 --- Assumption on your category ---
@@ -145,8 +199,7 @@ Under the condition 1, here are some examples of tau-categories.
 - Mesh categories of translation quivers [Iy1, 8.4].
 """
 
-info_text = """
-AR quiver calculator ver 0.2.1.
+info_text = """AR quiver calculator ver""" + version + """
 
 This program is written in Python, and uses PySimpleGUI.
 Actually, the actual computation algorithm is written in another module
@@ -158,15 +211,25 @@ Author: Haruhisa Enomoto
 """
 
 ref_text = """
+[AP] S.Asai, C. Pfeifer, Wide subcategories and lattices of torsion classes,
+    arXiv:1905.01148.
+
+[En] H. Enomoto, From the lattice of torsion classes to the posets
+    of wide subcategories and ICE-closed subcategories, arXiv:2201.00595.
+
+
+[ES] H. Enomoto, A. Sakai, ICE-closed subcategories and wide $\tau$-tilting modules,
+    Math. Z. 300 (2022), no. 1, 541--577.
+
 [Iy1] O. Iyama, tau-categories I: Ladders,
-    Algebr. Represent. Theory 8 (2005), no. 3, 297–321.
+    Algebr. Represent. Theory 8 (2005), no. 3, 297--321.
 
 [Iy2] O. Iyama, tau-categories II: Nakayama pairs and Rejective subcategories,
-    Algebr. Represent. Theory 8 (2005), no. 4, 449–477.
+    Algebr. Represent. Theory 8 (2005), no. 4, 449--477.
 
 [Iy3] O. Iyama, The relationship between homological properties
     and representation theoretic realization of artin algebras,
-    Trans. Amer. Math. Soc. 357 (2005), no. 2, 709–734.
+    Trans. Amer. Math. Soc. 357 (2005), no. 2, 709--734.
 
 [INP] O. Iyama, H. Nakaoka, Y. Palu,
     Auslander-Reiten theory in extriangulated categories, arXiv:1805.03776.
@@ -174,100 +237,122 @@ ref_text = """
 
 alg_text = """
 --- dim Hom(X,Y) ---
-
 Our method is based on the computation of so-called ladders for tau-categories in [Iy1, 7.2],
 which gives an algorithm to compute the minimal projective presentation of J^n(-,Y) for given Y,
 where J is the Jacobson radical.
 
+--- dim Ext^1(X,Y) ---
+Based on the AR duality on an extriangualted category [INP].
+By the AR duality, computing Ext^1 is reduced to compute stable Hom,
+and the stable category is a tau-category, so we can compute it.
+
+--- Subcategories of the module category ---
+Since we can compute Hom, we can list all semibricks and Hom-perpendicular categories.
+Thus we can list all torsion(-free) classes.
+Other classes can be computed from torsion classes as follows:
+- Wide subcats: using [AP].
+- ICE-closed (or IKE-closed) subcats: using [ES].
+- IE-closed subcats: they are precisely intersections of torsion classes and torsion-free classes.
+
 --- Shift functor on triangulated category ---
-
-If our category C is triangulated, then it has AR triangles since it is Hom-finite Krull-Schmidt and has only finitely many indecomposables.
-Thus it has a Serre functor S. Then it is well-known that S is a composition of tau and shift.
-Thus Hom(-, tau X[1]) = D Hom(X, -), hence Hom(-, X[1]) = D Hom(tau^{-1}X, -).
+If C is triangulated, then it has AR triangles, so has a Serre functor S.
+It is well-known that S is a composition of tau and shift.
+Thus Hom(-, tau X[1]) = D Hom(X, -), so Hom(-, X[1]) = D Hom(tau^{-1}X, -).
 If we consider modules over C, then Hom(-, X[1]) has a simple top X[1],
-thus by the above duality, we must have that X[1] is the socle of a projective module Hom(tau^{-1}X, -).
-Therefore, we compute socle of Hom(tau^{-1}X, -) using radical layer.
+thus by the above duality, X[1] is the socle of a projective module Hom(tau^{-1}X, -).
+Therefore, we compute the socle of Hom(tau^{-1}X, -) using radical layer.
 """
 
-hom_text1 = """
-This will calculate the dimension of Hom(X,Y) as a vector space
-for two indecomposables X and Y in your AR quiver.
-"""
+subcats_text = """
+We can calculate the following classes of subcategories of the module category:
 
-hom_text2 = """
-______________________________
-
-We also compute the radical layer of Hom(-,Y) and Hom(X,-).
-This is the successive quotient of the radical filtration
-Hom(-,Y) > J(-,Y) > J^2(-,Y) > ...
-where J is the Jacobson radical of C.
-This shows the "module structure" or "composition series notation"
-of these "modules" over our category.
-See "Explanation" Tab for details and how it works.
-
-NOTE: If the computation fails into infinite loop or doesn't terminate,
-then "Ellipsis" appears at last.
+- Torsion(-free) classes: subcategories closed under extensions and quotients (resp. submodules).
+- Wide subcategories: subcategories closed under extensions, kernels, and cokernels.
+- semibricks: pair-wise Hom-orthogonal brick (brick: module with End = k
+- ICE-closed subcategories: closed under Images, Cokernels, and Extensions.
+- IKE-closed subcategories: closed under Images, Kernels, and Extensions.
+- torsion hearts: T \cap U^\perp for some torsion classes U and T with U \subseteq T.
+- IE-closed subcategories: closed under Images and Extensions.
 """
 
 tri_text = """
-In this tab, we assume that your category is a Hom-finite Krull-Schmidt triangulated category with shift functor Sigma.
-Your quiver should be a stable translation quiver, that is, tau is defined for every vertex.
-
+In this tab, we assume your category is a triangulated category with shift functor Sigma.
 Ext^n(X, Y) is defined by Hom(X, Sigma^n Y) for an integer n.
 """
 
 tri_ortho_text = """
-We will list all objects M in your triangulated categories s.t. Ext^n(M, M) = 0 for a given n (several values possible).
-
-(We use identify basic objects in your category with the list of vertices by taking direct sums.)
-
+We list all objects M in your tri. cat. s.t. Ext^n(M, M) = 0 for a given (possibly several) n.
 NOTE: 0 object corresponds to the empty list and counted!
-______________________________
+"""
+
+module_text = """
+In this tab, we assume your category is the module category of a finite-dimensional algebra over a field.
+We compute all subcategories satisfying some conditions,
+and for a selected subcategory C, we compute its Ext-projective (injective) objects, that is, an object P with Ext^1(P, C) = 0.
+For the definitions of the classes of subcategories, see [Help] - [Classes of subcategories].
 """
 
 
 # -----GUI Layout START-----
 
-sg.theme('DarkAmber')
+sg.theme('DarkBrown')
 
-vtx_col = [[sg.Text('List of vertices:')],
-           [sg.Listbox([], size=(30, 5), key='-VTX-LIST-')],
-           [sg.Text('Add vertices (input vertices separeted by space)')],
-           [sg.Input(key='-VTX-FORM-', size=(30, 1), do_not_clear=False),
-            sg.Button("Add", key='-ADD-VTX-')],
-           [sg.Text("Delete the one selected above"),
-            sg.Button("Delete", key="-DEL-VTX-")]]
+vtx_col = [
+    [sg.T('Vertices:')],
+    [sg.Listbox([], size=(30, 3), key='-vtx-list-',
+                select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE)],
+    [sg.T('Add vertices (input vertices separated by space)')],
+    [sg.Input(key='-vtx-form-', size=(30, 1), do_not_clear=False),
+     sg.B("Add", key='-add-vtx-')],
+    [sg.T("Delete selected ones"),
+     sg.B("Delete", key="-del-vtx-")]]
 
-arrow_col = [[sg.Text('List of arrows:')],
-             [sg.Listbox([], size=(30, 5), key='-ARROW-LIST-')],
-             [sg.Text('Add arrows (input "1 2" to add arrow from 1 to 2,\n'
-                      'and "1 2 3" to add two arrows 1->2->3)')],
-             [sg.Input(key='-ARROW-FORM-', size=(30, 1), do_not_clear=False),
-              sg.Button("Add", key='-ADD-ARROW-')],
-             [sg.Text("Delete the one selected above"),
-              sg.Button("Delete", key="-DEL-ARROW-")]]
+arrow_col = [
+    [sg.T('Arrows:')],
+    [sg.Listbox([], size=(30, 3), key='-arrow-list-',
+                select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE)],
+    [sg.T('Add arrows (input "1 2" to add arrow from 1 to 2,\n'
+          'and "1 2 3" to add two arrows 1->2->3)')],
+    [sg.Input(key='-arrow-form-', size=(30, 1), do_not_clear=False),
+     sg.B("Add", key='-add-arrow-')],
+    [sg.T("Delete selected ones"),
+     sg.B("Delete", key="-del-arrow-")]]
 
-tau_col = [[sg.Text('List of AR translations:')],
-           [sg.Listbox([], size=(30, 5), key='-TAU-LIST-')],
-           [sg.Text('Add translation\n'
-                    '(input "1 2" if tau(1) = 2,'
-                    '"1 2 3" for tau(1) = 2, tau(2) = 3)')],
-           [sg.Input(key='-TAU-FORM-', size=(30, 1), do_not_clear=False),
-            sg.Button("Add", key='-ADD-TAU-')],
-           [sg.Text("Delete the one selected above"),
-            sg.Button("Delete", key="-DEL-TAU-")]]
+tau_col = [
+    [sg.T('AR translations:')],
+    [sg.Listbox([], size=(30, 3), key='-tau-list-',
+                select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE)],
+    [sg.T('Add translation\n'
+          '(input "1 2" if tau(1) = 2,'
+          '"1 2 3" for tau(1) = 2, tau(2) = 3)')],
+    [sg.Input(key='-tau-form-', size=(30, 1), do_not_clear=False),
+     sg.B("Add", key='-add-tau-')],
+    [sg.T("Delete selected ones"),
+     sg.B("Delete", key="-del-tau-")]]
 
-col = [[sg.T('Choose operations (just click for add vertices)')],
-       [sg.R('Draw a usual arrow', 1, default=True, key='-ARROW-')],
-       [sg.R('Draw a translation arrow = tau', 1, key='-TAU-')],
-       [sg.R('Delete item', 1, key='-ERASE-')],
-       [sg.R('Move', 1, key='-MOVE-')],
-       [sg.R("Move All", 1, key="-MOVEALL-")],
-       [sg.Button('Clear')]]
+col = [
+    [sg.T('Choose operations (click for add vertices)')],
+    [sg.R('Draw a usual arrow', 1, default=True, key='-arrow-')],
+    [sg.R('Draw a translation arrow = tau', 1, key='-tau-')],
+    [sg.R('Delete item', 1, key='-erase-')],
+    [sg.R('Move', 1, key='-move-')],
+    [sg.R("Move All", 1, key="-moveall-")],
+    [sg.Slider(range=(1, 200), default_value=100,
+               orientation="h", key="-scale-"),
+     sg.B("Rescale (%)", key="-scale-B-")],
+    [sg.B('Clear')]]
 
-size = (60, 40)
+subcat_col = [
+    [sg.T("The number of subcats is"),
+     sg.T("", key="-mod-num-")],
+    [sg.T('Choose one! (blue color)')],
+    [sg.Listbox([], size=(30, 10), key="-mod-subcat-", enable_events=True,
+                horizontal_scroll=True, expand_x=True, expand_y=True)],
+    [sg.T("Number of indecs:"), sg.T("", key="-mod-subcat-num-")]]
+
+size = (70, 80)
 # initial size of the canvas. Small value for small environments.
-bottom_right_corner = (2*size[0], 2*size[1])
+bottom_right_corner = size
 # We use the following coordinate system.
 # - The top left corner is (0,0)
 # - The "initial" bottom right corner is `bottom_right_corner`
@@ -275,122 +360,163 @@ bottom_right_corner = (2*size[0], 2*size[1])
 # it seems that the initial bottom right corner is remembered,
 # and the coordinate does not changes.
 
-input_layout = [[sg.Col(vtx_col), sg.Col(arrow_col), sg.Col(tau_col)],
-                [sg.Graph(canvas_size=size,
-                          graph_bottom_left=(0, bottom_right_corner[1]),
-                          graph_top_right=(bottom_right_corner[0], 0),
-                          key="-GRAPH-",
-                          enable_events=True, background_color='white',
-                          drag_submits=True, float_values=True,
-                          expand_x=True, expand_y=True),
-                 sg.Col(col)],
-                [sg.Text("To use Calculation tab, push the right button:"),
-                 sg.Button("Complete!")]]
+input_layout = [
+    [sg.Col(vtx_col), sg.Col(arrow_col), sg.Col(tau_col)],
+    [sg.Graph(canvas_size=size,
+              graph_bottom_left=(0, bottom_right_corner[1]),
+              graph_top_right=(bottom_right_corner[0], 0),
+              key="-graph-", enable_events=True, background_color='white',
+              drag_submits=True, float_values=True,
+              expand_x=True, expand_y=True),
+     sg.Col(col)],
+    [sg.B("Fit size"), sg.B("Done!")]]
 
-hom_input_col = [[sg.Text("X = "), sg.Combo([], size=(5, 1), key="-HOM-X-")],
-                 [sg.Text("Y = "), sg.Combo([], size=(5, 1), key="-HOM-Y-")]]
+hom_layout = [
+    [sg.T("Let's compute dim_k Hom(X,Y) and Ext^1(X, Y).\n"
+          "Click or select X (blue) and Y (red) in the quiver.")],
+    [sg.Graph(canvas_size=size,
+              graph_bottom_left=(0, bottom_right_corner[1]),
+              graph_top_right=(bottom_right_corner[0], 0),
+              key="-hom-graph-", enable_events=True,
+              background_color='white')],
+    [sg.T("X = "),
+     sg.Combo([], size=(5, 1), key="-hom-X-", enable_events=True),
+     sg.T("Y = "),
+     sg.Combo([], size=(5, 1), key="-hom-Y-", enable_events=True),
+     sg.B("Compute!", key="-hom-B-"),
+     sg.T("dim_k Hom(X,Y) = "), sg.T("", key="-hom-out-"),
+     sg.T(", dim_k Ext^1(X,Y) = "), sg.T("", key="-ext-out-")],
+    [sg.T("The radical series of Hom(X,-) is"),
+     sg.Listbox([], size=(10, 5), expand_x=True, key="-hom-cov-"),
+     sg.T("The radical series of Hom(-,Y) is"),
+     sg.Listbox([], size=(10, 5), expand_x=True, key="-hom-cont-")]]
 
-hom_layout = [[sg.Text(hom_text1)],
-              [sg.Text("Let's compute dim_k Hom(X,Y). Choose X and Y.")],
-              [sg.Col(hom_input_col),
-               sg.Button("Calculate!", key="-HOM-CAL-"),
-               sg.Text("dim_k Hom(X,Y) = "),
-               sg.Text("", key="-HOM-OUT-")],
-              [sg.Text(hom_text2)],
-              [sg.Text("The radical series of Hom(X,-) is"),
-               sg.Listbox([], size=(30, 5), expand_x=True, key="-HOM-COV-"),
-               sg.Text("The radical series of Hom(-,Y) is"),
-               sg.Listbox([], size=(30, 5), expand_x=True, key="-HOM-CONT-")]
-              ]
+tri_shift_layout = [
+    [sg.T("1. Compute Sigma^n")],
+    [sg.T("Click or select an object in the quiver."),
+     sg.Combo([], size=(5, 1), key="-tri-X-", enable_events=True),
+     sg.T("n = (default 1)"),
+     sg.Input(size=(5, 1), key="-tri-shift-deg-"),
+     sg.B("Apply Sigma^n!", key="-tri-shift-B-"),
+     sg.T("", key="-tri-shift-in-"),
+     sg.T(" goes to "),
+     sg.T("", key="-tri-shift-out-")],
+    [sg.Graph(canvas_size=size,
+              graph_bottom_left=(0, bottom_right_corner[1]),
+              graph_top_right=(bottom_right_corner[0], 0),
+              key="-tri-graph-", background_color='white',
+              enable_events=True)],
+    [sg.T("2. Objectwise period of shift functor")],
+    [sg.T("The period of the action of Sigma on objects:"),
+     sg.B("Compute!", key="-tri-per-B-"),
+     sg.T("", key="-tri-per-out-")]]
 
-tri_shift_layout = [[sg.Text("Calculations on the shift functor Sigma.")],
-                    [sg.Text("1. Calculate Sigma^n (X)")],
-                    [sg.Text("X = "),
-                     sg.Combo([], size=(5, 1), key="-TRI-SHIFT-"),
-                     sg.Text("n = (default 1)"),
-                     sg.Input(size=(5, 1), key="-TRI-SHIFT-DEG-"),
-                     sg.Button("Calculate!", key="-TRI-SHIFT-CAL-"),
-                     sg.Text("Sigma^n (X) = "),
-                     sg.Text("", key="-TRI-SHIFT-OUT-")],
-                    [sg.Text("_"*30)],
-                    [sg.Text("2. Calculation of Serre functor.")],
-                    [sg.Text("Serre functor is well-known to be"
-                             "the composition of tau and shift.")],
-                    [sg.Text("X = "),
-                     sg.Combo([], size=(5, 1), key="-TRI-SER-"),
-                     sg.Button("Calculate!", key="-TRI-SER-CAL-"),
-                     sg.Text("Serre(X) = "),
-                     sg.Text("", key="-TRI-SER-OUT-")],
-                    [sg.Text("_"*30)],
-                    [sg.Text("3. Objectwise period of shift functor")],
-                    [sg.Text("Compute the period of the action of Sigma"
-                             " on objects.")],
-                    [sg.Text("NOTE: This could be different from"
-                             " the period of the functor Sigma,"
-                             " since we don't consider the action on Hom.")],
-                    [sg.Button("Calculate!", key="-TRI-PER-CAL-")],
-                    [sg.Text("Period (on objects) is "),
-                     sg.Text("", key="-TRI-PER-OUT-")]]
+tri_ortho_col = [
+    [sg.T("Consider maximal objects with Ext vanishes.")],
+    [sg.T("The number of such basic objects is"),
+     sg.T("", key="-tri-ortho-num1-")],
+    [sg.T('Choose one! (blue color)')],
+    [sg.Listbox([], size=(30, 5), key="-tri-ortho-out1-", enable_events=True,
+                horizontal_scroll=True, expand_x=True, expand_y=True)],
+    [sg.T("Number of indec summands:"), sg.T("", key="-tri-ortho-ind-num1-")],
+    [sg.T("Without the maximality condition,\n"
+          "the number of basic orthogonal objects is:")],
+    [sg.T("", key="-tri-ortho-num2-")]]
 
+tri_ortho_layout = [
+    [sg.T(tri_ortho_text)],
+    [sg.T("Input n s.t. you want Ext^n to vanish."
+          "(default: 1)\n"
+          "Input like '1 2 3' if you want Ext^1, "
+          "Ext^2 and Ext^3 to vanish."),
+     sg.Input(size=(30, 1), key="-tri-deg-"),
+     sg.B("Compute!", key="-tri-ortho-B-")],
+    [sg.Graph(canvas_size=size,
+              graph_bottom_left=(0, bottom_right_corner[1]),
+              graph_top_right=(bottom_right_corner[0], 0),
+              key="-tri-ortho-graph-", background_color='white'),
+     sg.Col(tri_ortho_col)]]
 
-tri_ortho_layout = [[sg.Text(tri_ortho_text)],
-                    [sg.Text("Input n s.t. you want Ext^n to vanish."
-                             "(default: 1)\n"
-                             "Input like '1 2 3' if you want Ext^1, "
-                             "Ext^2 and Ext^3 to vanish."),
-                     sg.Input(size=(30, 1), key="-TRI-DEG-"),
-                     sg.Button("Calculate!", key="-TRI-ORTHO-CAL-")],
-                    [sg.Text("Here are maximal objects with Ext^n vanishes:"),
-                     sg.Listbox([], size=(30, 5), key="-TRI-ORTHO-OUT1-")],
-                    [sg.Text("The number of such objects is"),
-                     sg.Text("", key="-TRI-ORTHO-NUM1-")],
-                    [sg.Text("_"*30)],
-                    [sg.Text("Without the maximality condition, "
-                             "basic orthogonal objects are:"),
-                     sg.Listbox([], size=(30, 5), key="-TRI-ORTHO-OUT2-")],
-                    [sg.Text("The number of such objects is"),
-                     sg.Text("", key="-TRI-ORTHO-NUM2-")]
-                    ]
+tri_layout = [
+    [sg.T(tri_text)],
+    [sg.TabGroup(
+        [[sg.Tab("Shift functor", tri_shift_layout),
+          sg.Tab("Maximal Ext-orthogonals",
+                 tri_ortho_layout)]],
+        expand_x=True, expand_y=True
+    )]]
 
-tri_layout = [[sg.Text(tri_text)],
-              [sg.TabGroup(
-                  [[sg.Tab("Calculation of shift", tri_shift_layout),
-                    sg.Tab("Calculation of Ext-orthogonals",
-                           tri_ortho_layout)]],
-                  expand_x=True, expand_y=True
-              )]]
+module_layout = [
+    [sg.T(module_text)],
+    [sg.T("Compute all"),
+     sg.Combo(["torsion classes",
+               "torsion-free classes",
+               "semibricks",
+               "wide subcategories",
+               "ICE-closed subcategories",
+               "IKE-closed subcategories",
+               "torsion hearts",
+               "IE-closed subcategories",
+               "IE-closed, not torsion hearts"],
+              default_value="torsion classes",
+              auto_size_text=True, readonly=True,
+              key="-mod-sel-"),
+     sg.B("Compute", key="-mod-B-")],
+    [sg.Graph(canvas_size=size,
+              graph_bottom_left=(0, bottom_right_corner[1]),
+              graph_top_right=(bottom_right_corner[0], 0),
+              key="-mod-graph-", background_color='white'),
+     sg.Col(subcat_col)],
+    [sg.T("Select a subcategory.")],
+    [sg.R("Ext-projectives", 2, default=True, key="-proj-"),
+     sg.R("Ext-injectives", 2, key="-inj-"),
+     sg.B("Compute", key="-ext-obj-B-"),
+     sg.T("", key="-ext-obj-out-"),
+     sg.T("(shown in red)")]]
 
-menu_def = [['&File', ['&Open', '&Save', "Save &As...", '---',
-                       '&Import from String Applet',
-                       '&Export', ['Export the translation quiver data',
-                                   'Export the tex (not implemented!)'],
-                       '---', 'E&xit', ]],
-            ['Help', ['About this program', '---',
-                      'Assumptions', 'How it works', '---', 'References']]]
+menu_def = [
+    ['&File', ["&New", '&Open', '&Save', "Save &As...", '---',
+               '&Import from String Applet', '&Export',
+               ['Export the translation quiver data',
+                'Export the tex (not implemented!)'],
+               '---', 'E&xit', ]],
+    ['Help', ['About this program', '---',
+              'Assumptions', 'How it works', '---',
+              "Classes of subcategories", "---", 'References']]]
 
-layout = [[sg.Menu(menu_def)],
-          [sg.TabGroup([[sg.Tab("Input your AR quiver", input_layout),
-                         sg.Tab("Calculation of Hom", hom_layout),
-                         sg.Tab("Triangulated categories", tri_layout)
-                         ]],
-                       expand_x=True, expand_y=True)]]
+layout = [
+    [sg.Menu(menu_def)],
+    [sg.TabGroup([[
+        sg.Tab("Input", input_layout),
+        sg.Tab("Compute Hom and Ext^1", hom_layout),
+        sg.Tab("Module categories", module_layout),
+        sg.Tab("Triangulated categories", tri_layout)
+    ]], expand_x=True, expand_y=True)]]
 
-window_title = "AR quiver calculator ver. 0.2.1"
+window_title = "AR quiver calculator ver. " + version
 window = sg.Window(window_title, layout,
                    resizable=True, finalize=True,
                    enable_close_attempted_event=True)
-window.maximize()
+# window.maximize()
 
-graph: sg.Graph = window["-GRAPH-"]  # type: ignore
+graph: sg.Graph = window["-graph-"]
+hom_graph: sg.Graph = window["-hom-graph-"]
+mod_graph: sg.Graph = window["-mod-graph-"]
+tri_graph: sg.Graph = window["-tri-graph-"]
+tri_ortho_graph: sg.Graph = window["-tri-ortho-graph-"]
+str_to_graph = {
+    "main": graph, "hom": hom_graph, "mod": mod_graph,
+    "tri": tri_graph, "tri_ortho": tri_ortho_graph}
 
 # -----GUI Layout END-----
 
 dragging = False
 drawing_arrow = False
-vertex_keys = ["-HOM-X-", "-HOM-Y-", "-TRI-SHIFT-", "-TRI-SER-"]
-quiver = None  # The created TranslationQuiver object will be assigned.
-file_path = None
-changed = None
+selecting_X = False
+X_vtx = None
+Y_vtx = None
+tri_vtx = None
+vertex_keys = ["-hom-X-", "-hom-Y-", "-tri-X-"]
 
 # -----Some functions to draw AR quivers-----
 
@@ -415,7 +541,7 @@ def draw_vertex(name: str, location: tuple[float, float]) -> None:
     vertices.append(vertex)
 
 
-def delete_vtx(vertex: Vertex) -> None:
+def delete_vertex(vertex: Vertex) -> None:
     """
     Delete `vertex` and its related arrows from the canvas,
     and also remove them from `vertices` and `arrows`.
@@ -423,7 +549,8 @@ def delete_vtx(vertex: Vertex) -> None:
     global drawing_arrow
     vertex.delete()
     if drawing_arrow:
-        graph.TKCanvas.itemconfig(source_vtx.circle, fill="bisque")  # type: ignore
+        graph.TKCanvas.itemconfig(
+            source_vtx.circle_id["main"], fill="gray20")
         drawing_arrow = False
     vertices.remove(vertex)
     search_arrow_con = [a for a in arrows if vertex in (a.source, a.target)]
@@ -434,10 +561,10 @@ def delete_vtx(vertex: Vertex) -> None:
 
 def location_of_fig(figure: int) -> tuple[float, float]:
     """
-    Return the cooridnate (x,y) of the center of `figure`.
+    Return the coordinate (x,y) of the center of `figure`.
     """
     (x1, y1), (x2, y2) = graph.get_bounding_box(figure)
-    return ((x1 + x2)/2, (y1 + y2)/2)  # type: ignore
+    return ((x1 + x2)/2, (y1 + y2)/2)
 
 
 def add_vtx_from_form(lst: list[str]) -> None:
@@ -449,28 +576,54 @@ def add_vtx_from_form(lst: list[str]) -> None:
     lst = sorted(list(set(names + lst) - set(names)))
     # Only add new vertices
 
-    size: tuple[float, float] = graph.get_size()  # type: ignore
+    size: tuple[float, float] = graph.get_size()
 
     i = 1
     for vtx in lst:
         N = len(lst) + 1
-        draw_vertex(vtx, (i/N * 2 * size[0], size[1]))
+        draw_vertex(vtx, (i/N * size[0], size[1] / 2))
         i = i+1
     update_info()
 
 
+def fit_size() -> None:
+    """
+    Adjust locations of all vertices to fit the current canvas.
+    """
+    if not vertices:
+        return
+    canvas_size: tuple[float, float] = graph.get_size()
+    min_x = min([vtx.location[0] for vtx in vertices])
+    min_y = min([vtx.location[1] for vtx in vertices])
+    max_x = max([vtx.location[0] for vtx in vertices])
+    max_y = max([vtx.location[1] for vtx in vertices])
+    width = max_x - min_x
+    height = max_y - min_y
+    if width == 0:
+        width = canvas_size[0]
+    if height == 0:
+        height = canvas_size[1]
+    for vtx in vertices:
+        x, y = vtx.location
+        new_x = 30 + (x - min_x)/width * (canvas_size[0] - 60)
+        new_y = 30 + (y - min_y)/height * (canvas_size[1] - 60)
+        vtx.location = new_x, new_y
+        vtx.draw()
+    for ar in arrows:
+        ar.delete()
+        ar.draw()
+
+
 def update_info() -> None:
     """
-    Update the displayed information.
+    Update the displayed information about the AR quiver.
     """
-    vertices_list = sorted([vertex.name for vertex in vertices])
-    arrows_list = sorted([str(ar.source.name) + "---->" + str(ar.target.name)
-                          for ar in arrows if not ar.is_tau])
-    tau_list = sorted([str(ar.source.name) + "--tau-->" + str(ar.target.name)
-                       for ar in arrows if ar.is_tau])
-    window['-VTX-LIST-'].update(values=vertices_list)
-    window['-ARROW-LIST-'].update(values=arrows_list)
-    window['-TAU-LIST-'].update(values=tau_list)
+    vertices_list = sorted(vertices)
+    arrows_list = sorted([ar for ar in arrows if not ar.is_tau])
+    tau_list = sorted([ar for ar in arrows if ar.is_tau])
+    window['-vtx-list-'].update(values=vertices_list)
+    window['-arrow-list-'].update(values=arrows_list)
+    window['-tau-list-'].update(values=tau_list)
 
 
 def make_new_window(window_key: str) -> None:
@@ -478,25 +631,32 @@ def make_new_window(window_key: str) -> None:
     Make the new window (modal) for info, references, etc, and wait for events.
     """
     if window_key == "About this program":
-        layout = [[sg.Text(info_text)],
-                  [sg.Button("Author's website", key="-WEB-"),
-                   sg.Button('GitHub'), sg.OK()]]
+        layout = [[sg.T(info_text)],
+                  [sg.B("Author's website", key="-WEB-"),
+                   sg.B('GitHub'), sg.OK()]]
 
     elif window_key == "References":
-        layout = [[sg.Text(ref_text)],
+        layout = [[sg.T(ref_text)],
                   [sg.OK()]]
 
     elif window_key == "How it works":
-        layout = [[sg.Text(alg_text)],
+        layout = [[sg.T(alg_text)],
                   [sg.OK()]]
 
     elif window_key == "Assumptions":
-        layout = [[sg.Text(assump_text)],
+        layout = [[sg.T(assump_text)],
                   [sg.OK()]]
+
+    elif window_key == "Classes of subcategories":
+        layout = [[sg.T(subcats_text)],
+                  [sg.OK()]]
+
+    else:
+        raise ValueError
 
     new_window = sg.Window(window_key, layout, modal=True)
     while True:
-        event, _ = new_window.read()  # type: ignore
+        event, _ = new_window.read()
         if event in (sg.WIN_CLOSED, "OK"):
             break
         elif event == "-WEB-":
@@ -507,11 +667,16 @@ def make_new_window(window_key: str) -> None:
     new_window.close()
 
 
+def complete_warning():
+    sg.popup("Please click 'Done!' button in 'Input' Tab.",
+             title="Error")
+
+
 # -----Event Loop-----
 while True:
     event: str
     values: dict
-    event, values = window.read()  # type: ignore
+    event, values = window.read()
     # print(event, values, "\n____")
 
     if event == sg.WIN_CLOSE_ATTEMPTED_EVENT and not changed:
@@ -523,42 +688,45 @@ while True:
         break
 
     elif event == 'Clear':
-        changed = True
+        if vertices:
+            changed = True
         graph.erase()
         vertices, arrows = [], []
         update_info()
 
-    elif event == '-ADD-VTX-':
+    elif event == '-add-vtx-':
         changed = True
-        add_vtx_from_form(values['-VTX-FORM-'].split())
+        add_vtx_from_form(values['-vtx-form-'].split())
         update_info()
 
-    elif event == '-ADD-ARROW-':
-        changed = True
-        data = values["-ARROW-FORM-"].split()
+    elif event == '-add-arrow-':
+        data = values["-arrow-form-"].split()
         if len(data) < 2:
             sg.popup("Please input like '1 2' for 1->2.",
                      title="Error")
-        else:
-            # First add new vertices if needed
-            names = [v.name for v in vertices]
-            new_names = sorted(list(set([x for x in data if x not in names])))
-            add_vtx_from_form(new_names)
-            for i in range(len(data)-1):
-                source_name, target_name = data[i:i+2]
-                source = [v for v in vertices if v.name == source_name][0]
-                target = [v for v in vertices if v.name == target_name][0]
-                draw_arrow(source, target)
-            update_info()
-
-    elif event == '-ADD-TAU-':
+            continue
         changed = True
-        data = values["-TAU-FORM-"].split()
+        # First add new vertices if needed
+        names = [v.name for v in vertices]
+        new_names = list(set([x for x in data if x not in names]))
+        add_vtx_from_form(new_names)
+        for i in range(len(data)-1):
+            source_name, target_name = data[i:i+2]
+            source = [v for v in vertices if v.name == source_name][0]
+            target = [v for v in vertices if v.name == target_name][0]
+            draw_arrow(source, target)
+        update_info()
+
+    elif event == '-add-tau-':
+        data = values["-tau-form-"].split()
         if len(data) < 2:
             sg.popup("Please input like '1 2' for tau(1)=2.",
                      title="Error")
+            continue
+        changed = True
+        # First add new vertices if needed
         names = [v.name for v in vertices]
-        new_names = sorted(list(set([x for x in data if x not in names])))
+        new_names = [x for x in data if x not in names]
         add_vtx_from_form(new_names)
         for i in range(len(data)-1):
             source_name, target_name = data[i:i+2]
@@ -567,49 +735,30 @@ while True:
             draw_arrow(source, target, tau=True)
         update_info()
 
-    elif event == "-DEL-VTX-":
-        if not values["-VTX-LIST-"]:
-            sg.popup("Please select a vertex from the list!",
-                     title="Error")
-        else:
-            changed = True
-            vertex_name = values["-VTX-LIST-"][0]
-            vertex = [v for v in vertices if v.name == vertex_name][0]
-            delete_vtx(vertex)
-            update_info()
+    elif event == "-del-vtx-":
+        changed = values["-vtx-list-"] != []
+        for v in values["-vtx-list-"]:
+            delete_vertex(v)
+        update_info()
 
-    elif event == "-DEL-ARROW-":
-        if not values["-ARROW-LIST-"]:
-            sg.popup("Please select an arrow from the list!",
-                     title="Error")
-        else:
-            changed = True
-            s_name, t_name = values["-ARROW-LIST-"][0].split("---->")
-            arrow = [ar for ar in arrows
-                     if ar.source.name == s_name
-                     and ar.target.name == t_name][0]
-            arrow.delete()
-            arrows.remove(arrow)
-            update_info()
+    elif event == "-del-arrow-":
+        changed = values["-arrow-list-"] != []
+        for ar in values["-arrow-list-"]:
+            ar.delete()
+            arrows.remove(ar)
+        update_info()
 
-    elif event == "-DEL-TAU-":
-        if not values["-TAU-LIST-"]:
-            sg.popup("Please select an arrow from the list!",
-                     title="Error")
-        else:
-            changed = True
-            s_name, t_name = values["-TAU-LIST-"][0].split("--tau-->")
-            arrow = [ar for ar in arrows
-                     if ar.source.name == s_name
-                     and ar.target.name == t_name][0]
-            arrow.delete()
-            arrows.remove(arrow)
-            update_info()
+    elif event == "-del-tau-":
+        changed = values["-tau-list-"] != []
+        for ar in values["-tau-list-"]:
+            ar.delete()
+            arrows.remove(ar)
+        update_info()
 
-    elif event == "-GRAPH-":
+    elif event == "-graph-":
         x: float
         y: float
-        x, y = values["-GRAPH-"]
+        x, y = values["-graph-"]
         if not dragging:
             dragging = True
             drag_figures = graph.get_figures_at_location((x, y))
@@ -620,8 +769,14 @@ while True:
         delta_x, delta_y = x - last_xy[0], y - last_xy[1]
         last_xy = x, y
 
-        if ((values["-ARROW-"] or values["-TAU-"])
-           and not drag_figures and first_time):
+        if values['-moveall-']:
+            changed = True
+            graph.move(delta_x, delta_y)
+            for vertex in vertices:
+                vertex.update_location()
+
+        elif ((values["-arrow-"] or values["-tau-"])
+              and not drag_figures and first_time):
             # Then we add a vertex.
             # First decide the numbering of the vertices,
             # which is the smallest unused number.
@@ -635,39 +790,42 @@ while True:
             draw_vertex(str(number), (x, y))
             update_info()
 
-        elif ((values["-ARROW-"] or values["-TAU-"])
+        elif ((values["-arrow-"] or values["-tau-"])
               and drag_figures and first_time):
             # Then draw an arrow.
-            is_tau: bool = values["-TAU-"]
+            is_tau: bool = values["-tau-"]
             figure: int = drag_figures[-1]
-            search = [v for v in vertices if figure in (v.circle, v.label)]
+            search = [v for v in vertices
+                      if figure in (v.circle_id["main"], v.label_id["main"])]
             # Search a vertex which is clicked.
-            if search:
-                vertex = search[0]
-                if not drawing_arrow:
-                    # Then this vertex is selected as a source.
-                    source_vtx = vertex
-                    drawing_arrow = True
-                    # Change color!
-                    graph.TKCanvas.itemconfig(
-                        source_vtx.circle, fill="orange")  # type: ignore
-                else:
-                    changed = True
-                    # Then this vertex is a target, and we will draw an arrow.
-                    draw_arrow(source_vtx, vertex, is_tau)
-                    graph.TKCanvas.itemconfig(
-                        source_vtx.circle, fill="bisque")  # type: ignore
-                    drawing_arrow = False
-                    update_info()
+            if not search:
+                continue
+            vertex = search[0]
+            if not drawing_arrow:
+                # Then this vertex is selected as a source.
+                source_vtx = vertex
+                drawing_arrow = True
+                # Change color!
+                graph.TKCanvas.itemconfig(
+                    source_vtx.circle_id["main"], fill=select_color)
+            else:
+                changed = True
+                # Then this vertex is a target, and we will draw an arrow.
+                draw_arrow(source_vtx, vertex, is_tau)
+                graph.TKCanvas.itemconfig(
+                    source_vtx.circle_id["main"], fill=usual_color)
+                drawing_arrow = False
+                update_info()
 
-        elif values['-ERASE-'] and drag_figures:
+        elif values['-erase-'] and drag_figures:
             figure = drag_figures[-1]
-            search_vtx = [v for v in vertices if figure in (v.circle, v.label)]
-            search_arrow = [a for a in arrows if figure == a.figure]
+            search_vtx = [v for v in vertices
+                          if figure in (v.circle_id["main"], v.label_id["main"])]
+            search_arrow = [a for a in arrows if figure == a.figure_id["main"]]
             if search_vtx:
                 changed = True
                 vertex = search_vtx[0]
-                delete_vtx(vertex)
+                delete_vertex(vertex)
             elif search_arrow:
                 changed = True
                 for arrow in search_arrow:
@@ -678,61 +836,150 @@ while True:
         elif drag_figures:
             # Then move!
             figure = drag_figures[-1]
-            search = [v for v in vertices if figure in (v.circle, v.label)]
+            search = [v for v in vertices
+                      if figure in (v.circle_id["main"], v.label_id["main"])]
             # Search a dragged vertex.
-            if search:
-                changed = True
-                vertex = search[0]
-                graph.move_figure(vertex.circle, delta_x, delta_y)
-                graph.move_figure(vertex.label, delta_x, delta_y)
-                vertex.update_location()
-                search_arrow = [a for a in arrows
-                                if vertex in (a.source, a.target)]
-                for arrow in search_arrow:
-                    arrow.delete()
-                    arrows.remove(arrow)
-                    draw_arrow(arrow.source, arrow.target, arrow.is_tau)
-                graph.update()
-        elif values['-MOVEALL-']:
+            if not search:
+                continue
             changed = True
-            graph.move(delta_x, delta_y)
-            for vertex in vertices:
-                vertex.update_location()
+            vertex = search[0]
+            graph.move_figure(vertex.circle_id["main"], delta_x, delta_y)
+            graph.move_figure(vertex.label_id["main"], delta_x, delta_y)
+            vertex.update_location()
+            search_arrow = [a for a in arrows
+                            if vertex in (a.source, a.target)]
+            for arrow in search_arrow:
+                arrow.delete()
+                arrows.remove(arrow)
+                draw_arrow(arrow.source, arrow.target, arrow.is_tau)
+            graph.update()
 
-    elif event.endswith('+UP'):  # The drawing has ended because mouse up
+    elif event == "-scale-B-":
+        changed = values["-scale-"] != 100
+        for vertex in vertices:
+            ratio: float = values["-scale-"] / 100
+            vertex.location = (
+                vertex.location[0] * ratio, vertex.location[1] * ratio)
+            vertex.draw()
+        for ar in arrows:
+            ar.delete()
+            ar.draw()
+        window["-scale-"].update(100)
+
+    elif event == '-graph-+UP':  # The drawing has ended because mouse up
         dragging = False
 
-    elif event == "Complete!":
-        # Construct an instance of `TranslationQuiver`.
-        # Vertices are represented by their name.
+    elif event == "Fit size":
+        fit_size()
+        changed = True
 
+    elif event == "Done!":
+        # Construct an instance of `TranslationQuiver`.
+        # Vertices are names (str) of each `Vertex`.
+        name_to_vertex = {v.name: v for v in vertices}
+        vertices_list = [v.name for v in vertices]
         # First construct a dictionary tau.
-        tau_domain = [ar.source.name for ar in arrows if ar.is_tau]
-        tau: dict[str, str] = dict()
-        for v in tau_domain:
-            tau_vs = [ar.target.name for ar in arrows
-                      if ar.source.name == v and ar.is_tau]
-            if len(tau_vs) != 1:
-                sg.popup("Some tau-arrows have the same codomain!",
-                         title="Error")
-            tau[v] = tau_vs[0]
+        tau = {ar.source.name: ar.target.name for ar in arrows if ar.is_tau}
+        if len(tau) != len([ar for ar in arrows if ar.is_tau]):
+            sg.popup("Some tau-arrows have the same codomain!", title="Error")
+            continue
         arrow_list = [(ar.source.name, ar.target.name)
                       for ar in arrows if not ar.is_tau]
-        # Try to construct a TranslationQuiver,
-        # and then enables and modify "Calculation of Hom" tab.
         try:
-            quiver = TranslationQuiver(tuple([v.name for v in vertices]),
-                                       tuple(arrow_list),
-                                       tau)
-            sg.popup("Your AR quiver have been successfully inputted!",
+            quiver = TranslationQuiver(vertices_list, arrow_list, tau)
+            sg.popup("Your AR quiver has been successfully inputted!",
                      title="Success!")
-            names = [v.name for v in vertices]
             for key in vertex_keys:
-                window[key].update(values=names)
+                window[key].update(values=vertices)
+            # Copy the AR quiver to other tabs
+            size = graph.get_size()
+            for graph_name, graph_obj in str_to_graph.items():
+                if graph_name == "main":
+                    continue
+                graph_obj.erase()
+                graph_obj.set_size((size[0] * 0.9, size[1] * 0.9))
+                graph_obj.change_coordinates((0, size[1]), (size[0], 0))
+                for v in vertices:
+                    v.draw(graph_name)
+                for ar in arrows:
+                    ar.draw(graph_name)
         except ValueError as e:
             sg.popup(e, title="Error")
 
-    # --- Event on Save and open ---
+    # --- Events on copied graphs
+
+    elif event == "-hom-graph-":
+        x: float
+        y: float
+        x, y = values["-hom-graph-"]
+        drag_figures = hom_graph.get_figures_at_location((x, y))
+        if not drag_figures:
+            continue
+        figure: int = drag_figures[-1]
+        search = [v for v in vertices
+                  if figure in (v.circle_id["hom"], v.label_id["hom"])]
+        # Search a vertex which is clicked.
+        if not search:
+            continue
+        vertex = search[0]
+        if not selecting_X:
+            # Then this vertex is X s.t. we'll calculate (X,-).
+            # Reset previously selected vertices' colors.
+            if X_vtx:
+                hom_graph.TKCanvas.itemconfig(X_vtx.circle_id["hom"],
+                                              fill=usual_color)
+            if Y_vtx:
+                hom_graph.TKCanvas.itemconfig(Y_vtx.circle_id["hom"],
+                                              fill=usual_color)
+            X_vtx = vertex
+            hom_graph.TKCanvas.itemconfig(X_vtx.circle_id["hom"],
+                                          fill=cat_color1)
+            window["-hom-X-"].update(X_vtx)
+            selecting_X = True
+        else:
+            Y_vtx = vertex
+            hom_graph.TKCanvas.itemconfig(vertex.circle_id["hom"],
+                                          fill=cat_color2)
+            window["-hom-Y-"].update(Y_vtx)
+            selecting_X = False
+
+    elif event == "-tri-graph-":
+        x: float
+        y: float
+        x, y = values["-tri-graph-"]
+        drag_figures = hom_graph.get_figures_at_location((x, y))
+        if not drag_figures:
+            continue
+        figure: int = drag_figures[-1]
+        search = [v for v in vertices
+                  if figure in (v.circle_id["tri"], v.label_id["tri"])]
+        # Search a vertex which is clicked.
+        if not search:
+            continue
+        vertex = search[0]
+        # Then this vertex is X s.t. we'll calculate (X,-).
+        # Reset previously selected vertices' colors.
+        if tri_vtx:
+            tri_graph.TKCanvas.itemconfig(tri_vtx.circle_id["tri"],
+                                          fill=usual_color)
+        tri_vtx = vertex
+        tri_graph.TKCanvas.itemconfig(tri_vtx.circle_id["tri"],
+                                      fill=cat_color1)
+        window["-tri-X-"].update(tri_vtx)
+
+    # --- Events on Save and open ---
+
+    elif event == "New":
+        if changed and sg.popup_yes_no("Are you sure to discard changes?",
+                                       title="Warning") == "No":
+            continue
+        changed = False
+        file_path = None
+        graph.erase()
+        vertices, arrows = [], []
+        window.TKroot.title(window_title)
+        update_info()
+
     elif event == "Save" and file_path:
         with open(file_path, "wb") as f:
             pickle.dump((vertices, arrows), f)
@@ -745,15 +992,15 @@ while True:
             file_types=[("Pickle file", "*.pickle"), ('ALL Files', '*.*')],
             save_as=True,
             no_window=True)
-        if file_path:
-            try:
-                with open(file_path, "wb") as f:
-                    pickle.dump((vertices, arrows), f)
-                window.TKroot.title(file_path
-                                    + " - " + window_title)
-                changed = False
-            except Exception as e:
-                sg.popup(e, title="Error")
+        if not file_path:
+            continue
+        try:
+            with open(file_path, "wb") as f:
+                pickle.dump((vertices, arrows), f)
+            window.TKroot.title(file_path + " - " + window_title)
+            changed = False
+        except Exception as e:
+            sg.popup(e, title="Error")
 
     elif event == "Open":
         sure = "Yes"
@@ -766,129 +1013,49 @@ while True:
                 title="Open",
                 file_types=[("Pickle file", "*.pickle"), ('ALL Files', '*.*')],
                 no_window=True)
-            if file_path:
-                try:
-                    with open(file_path, "rb") as f:
-                        vertices, arrows = pickle.load(f)
-                        graph.erase()
-                        for v in vertices:
-                            v.draw()
-                        for ar in arrows:
-                            ar.draw()
-                        window.TKroot.title(
-                            file_path + " - " + window_title)
-                        changed = False
-                except Exception as e:
-                    sg.popup(e, title="Error")
-                update_info()
+            if not file_path:
+                continue
+            try:
+                with open(file_path, "rb") as f:
+                    vertices, arrows = pickle.load(f)
+                    graph.erase()
+                    for v in vertices:
+                        v.circle_id = {}
+                        v.label_id = {}
+                        v.draw()
+                    for ar in arrows:
+                        ar.figure_id = {}
+                        ar.draw()
+                    window.TKroot.title(file_path + " - " + window_title)
+                    changed = False
+            except Exception as e:
+                sg.popup(e, title="Error")
+            update_info()
 
     elif event == "Export the translation quiver data":
         if not quiver:
-            sg.popup("Please click 'Complete!' button.",
-                     title="Error")
-        else:
-            file_path = sg.popup_get_file(
-                "The created object of a class `TranslationQuiver` "
-                "will be saved. Enter a filename.",
-                default_extension="pickle",
-                file_types=[("Pickle file", "*.pickle")],
-                save_as=True,
-                no_window=True)
-            if file_path:
-                try:
-                    with open(file_path, "wb") as f:
-                        pickle.dump(quiver, f)
-                except Exception as e:
-                    sg.popup(e)
-
-    # --- Event concerning calculations ---
-
-    elif event == "-HOM-CAL-":
-        if not quiver:
-            sg.popup("Please click 'Complete!' button.",
-                     title="Error")
-        else:
-            names = [v.name for v in vertices]
-            X, Y = values["-HOM-X-"], values["-HOM-Y-"]
+            complete_warning()
+            continue
+        file_path = sg.popup_get_file(
+            "The created object of a class `TranslationQuiver` "
+            "will be saved. Enter a filename.",
+            default_extension="pickle",
+            file_types=[("Pickle file", "*.pickle")],
+            save_as=True,
+            no_window=True)
+        if file_path:
             try:
-                dim = quiver.hom(X, Y)
-                window["-HOM-OUT-"].update(dim)
-            except ValueError as e:
-                sg.popup(e, title="Error")
-            try:
-                hom_X_layer = quiver.radical_layer(X, contravariant=False)
-                hom_Y_layer = quiver.radical_layer(Y)
-                window["-HOM-COV-"].update(values=hom_X_layer)
-                window["-HOM-CONT-"].update(values=hom_Y_layer)
-            except ValueError as e:
-                sg.popup(e, title="Error")
-
-    elif event == "-TRI-SHIFT-CAL-":
-        if not quiver:
-            sg.popup("Please click 'Complete!' button.",
-                     title="Error")
-        else:
-            X = values["-TRI-SHIFT-"]
-            degree = values["-TRI-SHIFT-DEG-"]
-            if degree:
-                degree = int(degree)
-            else:
-                degree = 1
-            try:
-                shift_X = quiver.shift(X, degree)
-                window["-TRI-SHIFT-OUT-"].update(shift_X)
-            except ValueError as e:
-                sg.popup(e, title="Error")
-
-    elif event == "-TRI-SER-CAL-":
-        if not quiver:
-            sg.popup("Please click 'Complete!' button.",
-                     title="Error")
-        else:
-            X = values["-TRI-SER-"]
-            try:
-                result = quiver.Serre_functor(X)
-                window["-TRI-SER-OUT-"].update(result)
-            except ValueError as e:
-                sg.popup(e, title="Error")
-
-    elif event == "-TRI-PER-CAL-":
-        if not quiver:
-            sg.popup("Please click 'Complete!' button.",
-                     title="Error")
-        else:
-            try:
-                period = quiver.period()
-                window["-TRI-PER-OUT-"].update(period)
-            except ValueError as e:
-                sg.popup(e, title="Error")
-
-    elif event == "-TRI-ORTHO-CAL-":
-        if not quiver:
-            sg.popup("Please click 'Complete!' button.",
-                     title="Error")
-        else:
-            try:
-                degrees = [int(n) for n in values["-TRI-DEG-"].split()]
-                if not degrees:
-                    degrees = [1]
-                result1 = quiver.maximal_ext_orthogonals(degrees)
-                result2 = quiver.ext_orthogonals(degrees)
-                result1.sort(key=lambda lst: (len(lst), lst))
-                result2.sort(key=lambda lst: (len(lst), lst))
-                window["-TRI-ORTHO-OUT1-"].update(values=result1)
-                window["-TRI-ORTHO-NUM1-"].update(len(result1))
-                window["-TRI-ORTHO-OUT2-"].update(values=result2)
-                window["-TRI-ORTHO-NUM2-"].update(len(result2))
+                with open(file_path, "wb") as f:
+                    pickle.dump(quiver, f)
             except Exception as e:
-                sg.popup(e, title="Error")
+                sg.popup(e)
 
     elif event == "Import from String Applet":
         file_path = sg.popup_get_file(
             "Enter your tex file exported from String Applet",
             file_types=[("LaTeX file", "*.tex"), ('ALL Files', '*.*')],
             no_window=True
-            )
+        )
         if file_path:
             with open(file_path, "r", encoding='utf-8') as f:
                 lines_lst = f.readlines()
@@ -932,26 +1099,209 @@ while True:
                 else:
                     break
             vertices, arrows = [], []
-            # Normalize cooridnate so that the smallest values of x and y
-            # are (30, 30).
-            min_x = min([x for _, (x, _) in loaded_vertices]) - 30
-            min_y = min([y for _, (_, y) in loaded_vertices]) - 30
-            loaded_vertices = [(name, (x - min_x, y - min_y))
-                               for name, (x, y) in loaded_vertices]
             graph.erase()
             for vtx_name, location in loaded_vertices:
                 draw_vertex(vtx_name, location)
-            # add_vtx_from_form(loaded_vertices)
             for source_name, target_name, is_tau in loaded_arrows:
                 source = [v for v in vertices if v.name == source_name][0]
                 target = [v for v in vertices if v.name == target_name][0]
                 draw_arrow(source, target, is_tau)
+            fit_size()
             update_info()
+
+    # --- Event concerning calculations ---
+
+    elif event == "-hom-X-":
+        if X_vtx:
+            hom_graph.TKCanvas.itemconfig(X_vtx.circle_id["hom"],
+                                          fill=usual_color)
+        X_vtx = values["-hom-X-"]
+        hom_graph.TKCanvas.itemconfig(X_vtx.circle_id["hom"],
+                                      fill=cat_color1)
+
+    elif event == "-hom-Y-":
+        if Y_vtx:
+            hom_graph.TKCanvas.itemconfig(Y_vtx.circle_id["hom"],
+                                          fill=usual_color)
+        Y_vtx = values["-hom-Y-"]
+        hom_graph.TKCanvas.itemconfig(Y_vtx.circle_id["hom"],
+                                      fill=cat_color2)
+
+    elif event == "-hom-B-":
+        if not quiver:
+            complete_warning()
+            continue
+        if X_vtx:
+            hom_graph.TKCanvas.itemconfig(
+                X_vtx.circle_id["hom"], fill=usual_color)
+        if Y_vtx:
+            hom_graph.TKCanvas.itemconfig(
+                Y_vtx.circle_id["hom"], fill=usual_color)
+        X_vtx, Y_vtx = values["-hom-X-"], values["-hom-Y-"]
+        if not (X_vtx in vertices and Y_vtx in vertices):
+            sg.popup("Please select X and Y in the quiver!", title="Error")
+            continue
+        X, Y = X_vtx.name, Y_vtx.name
+        hom_graph.TKCanvas.itemconfig(X_vtx.circle_id["hom"], fill=cat_color1)
+        hom_graph.TKCanvas.itemconfig(Y_vtx.circle_id["hom"], fill=cat_color2)
+        try:
+            window["-hom-out-"].update(quiver.hom(X, Y))
+            window["-ext-out-"].update(quiver.ext(X, Y))
+            hom_X_layer = quiver.radical_layer(X, contravariant=False)
+            hom_Y_layer = quiver.radical_layer(Y)
+            window["-hom-cov-"].update(values=hom_X_layer)
+            window["-hom-cont-"].update(values=hom_Y_layer)
+        except ValueError as e:
+            sg.popup(e, title="Error")
+
+    elif event == "-tri-X-":
+        if tri_vtx:
+            tri_graph.TKCanvas.itemconfig(tri_vtx.circle_id["hom"],
+                                          fill=usual_color)
+        tri_vtx = values["-tri-X-"]
+        tri_graph.TKCanvas.itemconfig(tri_vtx.circle_id["hom"],
+                                      fill=cat_color1)
+
+    elif event == "-tri-shift-B-":
+        if not quiver:
+            complete_warning()
+            continue
+        if values["-tri-X-"] not in vertices:
+            sg.popup("Please select X in the quiver!", title="Error")
+            continue
+        X_vtx = values["-tri-X-"]
+        X = X_vtx.name
+        degree = values["-tri-shift-deg-"]
+        if degree:
+            try:
+                degree = int(degree)
+            except ValueError:
+                sg.popup("Enter an integer!", title="Error")
+                continue
+        else:
+            degree = 1
+        try:
+            shift_X = quiver.shift(X, degree)
+            window["-tri-shift-in-"].update(X)
+            window["-tri-shift-out-"].update(shift_X)
+            shift_vtx = name_to_vertex[shift_X]
+            tri_graph.TKCanvas.itemconfig(X_vtx.circle_id["hom"],
+                                          fill=usual_color)
+            tri_graph.TKCanvas.itemconfig(shift_vtx.circle_id["hom"],
+                                          fill=cat_color1)
+            window["-tri-X-"].update(shift_vtx)
+            tri_vtx = shift_vtx
+        except ValueError as e:
+            sg.popup(e, title="Error")
+
+    elif event == "-tri-per-B-":
+        if not quiver:
+            complete_warning()
+            continue
+        try:
+            period = quiver.period()
+            window["-tri-per-out-"].update(period)
+        except ValueError as e:
+            sg.popup(e, title="Error")
+
+    elif event == "-tri-ortho-B-":
+        if not quiver:
+            complete_warning()
+            continue
+        try:
+            degrees = [int(n) for n in values["-tri-deg-"].split()]
+            if not degrees:
+                degrees = [1]
+            result1 = quiver.maximal_ext_orthogonals(degrees)
+            result2 = quiver.ext_orthogonals(degrees)
+            maximal_list = [sorted([name_to_vertex[X] for X in CC])
+                            for CC in result1]
+            maximal_list.sort(key=lambda T: (len(T), T))
+            window["-tri-ortho-out1-"].update(values=maximal_list)
+            window["-tri-ortho-num1-"].update(len(maximal_list))
+            window["-tri-ortho-num2-"].update(len(result2))
+        except Exception as e:
+            sg.popup(e, title="Error")
+
+    elif event == "-tri-ortho-out1-" and values["-tri-ortho-out1-"]:
+        indec_objs = values["-tri-ortho-out1-"][0]
+        window["-tri-ortho-ind-num1-"].update(len(indec_objs))
+        for vtx in vertices:
+            if vtx in indec_objs:
+                tri_ortho_graph.TKCanvas.itemconfig(
+                    vtx.circle_id["tri_ortho"], fill=cat_color1)
+            else:
+                tri_ortho_graph.TKCanvas.itemconfig(
+                    vtx.circle_id["tri_ortho"], fill=usual_color)
+
+    elif event == "-mod-B-":
+        if not quiver:
+            complete_warning()
+            continue
+        try:
+            if values["-mod-sel-"] == "torsion classes":
+                subcats = quiver.torsion_classes()
+            elif values["-mod-sel-"] == "torsion-free classes":
+                subcats = quiver.torsion_free_classes()
+            elif values["-mod-sel-"] == "semibricks":
+                subcats = quiver.semibricks()
+            elif values["-mod-sel-"] == "wide subcategories":
+                subcats = quiver.wide_subcategories()
+            elif values["-mod-sel-"] == "IE-closed subcategories":
+                subcats = quiver.IE_closed_subcategories()
+            elif values["-mod-sel-"] == "ICE-closed subcategories":
+                subcats = quiver.ICE_closed_subcategories()
+            elif values["-mod-sel-"] == "IKE-closed subcategories":
+                subcats = quiver.IKE_closed_subcategories()
+            elif values["-mod-sel-"] == "torsion hearts":
+                subcats = quiver.torsion_hearts()
+            elif values["-mod-sel-"] == "IE-closed, not torsion hearts":
+                subcats = quiver.IE_closed_subcategories() \
+                    - quiver.torsion_hearts()
+            else:
+                raise ValueError
+            subcats_list = [sorted([name_to_vertex[X] for X in CC])
+                            for CC in subcats]
+            subcats_list.sort(key=lambda T: (len(T), T))
+            window["-mod-num-"].update(len(subcats_list))
+            window["-mod-subcat-"].update(values=subcats_list)
+        except Exception as e:
+            sg.popup(e, title="Error")
+
+    elif event == "-mod-subcat-" and values["-mod-subcat-"]:
+        indec_objs = values["-mod-subcat-"][0]
+        window["-mod-subcat-num-"].update(len(indec_objs))
+        for vtx in vertices:
+            if vtx in indec_objs:
+                mod_graph.TKCanvas.itemconfig(
+                    vtx.circle_id["mod"], fill=cat_color1)
+            else:
+                mod_graph.TKCanvas.itemconfig(
+                    vtx.circle_id["mod"], fill=usual_color)
+
+    elif event == "-ext-obj-B-" and values["-mod-subcat-"]:
+        subcat: list[Vertex] = values["-mod-subcat-"][0]
+        subcat_names = [v.name for v in subcat]
+        if values["-proj-"]:
+            obj_names = quiver.ext_projectives(subcat_names)
+        else:
+            obj_names = quiver.ext_injectives(subcat_names)
+        objs: list[Vertex] = []
+        for vtx in subcat:
+            if vtx.name in obj_names:
+                mod_graph.TKCanvas.itemconfig(
+                    vtx.circle_id["mod"], fill=cat_color2)
+                objs.append(vtx)
+            else:
+                mod_graph.TKCanvas.itemconfig(
+                    vtx.circle_id["mod"], fill=cat_color1)
+        objs.sort()
+        window["-ext-obj-out-"].update(" ".join([str(v) for v in objs]))
 
     # --- Event making new window ---
 
     elif event in ("References", "About this program",
-                   "How it works", "Assumptions"):
+                   "How it works", "Assumptions", "Classes of subcategories"):
         make_new_window(window_key=event)
 
 window.close()
