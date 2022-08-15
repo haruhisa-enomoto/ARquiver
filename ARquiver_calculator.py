@@ -677,8 +677,7 @@ while True:
     event: str
     values: dict
     event, values = window.read()
-    print(event, values, "\n____")
-    print(arrows)
+    # print(event, values, "\n____")
 
     if event == sg.WIN_CLOSE_ATTEMPTED_EVENT and not changed:
         break
