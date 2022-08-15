@@ -5,7 +5,7 @@ A GUI program to work with Auslander-Reiten quivers and compute various objects.
 
 (The Auslander-Reiten quiver of mod k(D5), a torsion class of it, and Ext-projectives of it)
 
-- [exe file (9.4 MB) for Windows](https://github.com/haruhisa-enomoto/ARquiver/releases/download/v0.3.0/ARquiver_calculator.exe) available.
+- [exe file (9.4 MB) for Windows](https://github.com/haruhisa-enomoto/ARquiver/releases/download/v0.3./ARquiver_calculator.exe) available.
 - For Mac: to be appeared soon sorry, or maybe work directly with python.
 
 ## Contents
@@ -79,6 +79,9 @@ The following is possible in principle, and I'll add them later(?).
 - Check whether inputted AR quiver is actually the AR quiver of the module category
 
 ## Changelog
+
+- ver 0.3.1 - 2022-08-15:
+  - Fix a bug: an error happens when deleting arrows from "Delete" button after moving vertices.
 
 - ver 0.3.0 - 2022-08-13:
   - Improve UI (fit size, display copies of AR quivers for other tabs, etc)
