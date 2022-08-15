@@ -20,7 +20,7 @@ import PySimpleGUI as sg
 
 from ARquiver import TranslationQuiver
 
-version = "0.3.0"
+version = "0.3.1"
 # Colors for vertices
 usual_color, border_color, select_color = "gray90", "gray20", "lightsalmon"
 cat_color1, cat_color2 = "CadetBlue1", "light pink"
@@ -89,7 +89,7 @@ class Vertex:
         self.circle_id[graph_name], self.label_id[graph_name] = circ, label
 
     def update_location(self) -> None:
-        """Update `self.location` accorindg to the current location
+        """Update `self.location` according to the current location
         in our main graph.
         """
         self.location = location_of_fig(self.circle_id["main"])
@@ -242,7 +242,7 @@ which gives an algorithm to compute the minimal projective presentation of J^n(-
 where J is the Jacobson radical.
 
 --- dim Ext^1(X,Y) ---
-Based on the AR duality on an extriangualted category [INP].
+Based on the AR duality on an extriangulated category [INP].
 By the AR duality, computing Ext^1 is reduced to compute stable Hom,
 and the stable category is a tau-category, so we can compute it.
 
@@ -677,7 +677,8 @@ while True:
     event: str
     values: dict
     event, values = window.read()
-    # print(event, values, "\n____")
+    print(event, values, "\n____")
+    print(arrows)
 
     if event == sg.WIN_CLOSE_ATTEMPTED_EVENT and not changed:
         break
@@ -853,6 +854,7 @@ while True:
                 arrows.remove(arrow)
                 draw_arrow(arrow.source, arrow.target, arrow.is_tau)
             graph.update()
+            update_info()
 
     elif event == "-scale-B-":
         changed = values["-scale-"] != 100
