@@ -1052,6 +1052,9 @@ while True:
                 sg.popup(e)
 
     elif event == "Import from String Applet":
+        if changed and sg.popup_yes_no("Are you sure to discard changes?",
+                                       title="Warning") == "No":
+            continue
         file_path = sg.popup_get_file(
             "Enter your tex file exported from String Applet",
             file_types=[("LaTeX file", "*.tex"), ('ALL Files', '*.*')],
