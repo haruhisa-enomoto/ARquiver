@@ -5,7 +5,7 @@ A GUI program to work with Auslander-Reiten quivers and compute various objects.
 
 (The Auslander-Reiten quiver of mod k(D5), a torsion class of it, and Ext-projectives of it)
 
-- [exe file (9.4 MB) for Windows](https://github.com/haruhisa-enomoto/ARquiver/releases/download/v0.3./ARquiver_calculator.exe) available.
+- [exe file (9.4 MB) for Windows](https://github.com/haruhisa-enomoto/ARquiver/releases/download/v0.3.1/ARquiver_calculator.exe) available.
 - For Mac: to be appeared soon sorry, or maybe work directly with python.
 
 ## Contents
