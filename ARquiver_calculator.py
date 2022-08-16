@@ -21,7 +21,7 @@ import PySimpleGUI as sg
 from ARquiver import TranslationQuiver
 from Drawings import *
 
-version = "0.3.0"
+version = "0.3.0(forked)"
 
 
 # ----- Global variables -----
@@ -109,7 +109,7 @@ which gives an algorithm to compute the minimal projective presentation of J^n(-
 where J is the Jacobson radical.
 
 --- dim Ext^1(X,Y) ---
-Based on the AR duality on an extriangualted category [INP].
+Based on the AR duality on an extriangulated category [INP].
 By the AR duality, computing Ext^1 is reduced to compute stable Hom,
 and the stable category is a tau-category, so we can compute it.
 
@@ -901,16 +901,7 @@ while True:
         elif (values["-arrow-"] or values["-tau-"]) and drag_figures and first_time:
             # Then draw an arrow.
             is_tau: bool = values["-tau-"]
-            # figure: int = drag_figures[-1]
-            # search = [
-            #     v
-            #     for v in vertices
-            #     if figure in (v.circle_id["main"], v.label_id["main"])
-            # ]
-            # # Search a vertex which is clicked.
-            # if not search:
-            #     continue
-            # vertex = search[0]
+
             vertex = vertex_from_drag(drag_figures)
             unselect_all()
             if not drawing_arrow:
@@ -977,6 +968,7 @@ while True:
                     arrows.remove(arrow)
                     draw_arrow(arrow.source, arrow.target, arrow.is_tau)
             graph.update()
+            update_info()
 
     elif event == "-scale-B-":
         changed = values["-scale-"] != 100
